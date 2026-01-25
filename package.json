@@ -1,0 +1,32 @@
+{
+	"name": "telegram-inline-keyboard-builder",
+	"version": "1.0.0",
+	"description": "Universal inline keyboard builder for Telegram APIs",
+	"main": "builders/InlineKeyboardTelegraf.js",
+	"type": "module",
+	"keywords": [
+		"telegram",
+		"inline-keyboard",
+		"telegraf",
+		"aiogram",
+		"builder",
+		"python-telegram-bot",
+		"node-telegram-bot-api"
+	],
+	"author": "neoncraftx",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/neoncraftx/telegram-inline-keyboard-builder.git"
+	},
+	"bugs": {
+		"url": "https://github.com/neoncraftx/telegram-inline-keyboard-builder.git/issues"
+	},
+	"homepage": "https://github.com/neoncraftx/telegram-inline-keyboard-builder.git#readme",
+	"peerDependencies": {
+		"telegraf": "^4.0.0"
+	},
+	"dependencies": {
+		"telegram-inline-keyboard-builder": "file:telegram-inline-keyboard-builder-1.0.0.tgz"
+	}
+}

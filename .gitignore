@@ -1,0 +1,172 @@
+# ==========================
+# System files
+# ==========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.old
+*.orig
+
+# ==========================
+# Node.js / JavaScript
+# ==========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log
+dist/
+build/
+.env
+.env.local
+.env.*.local
+coverage/
+*.tsbuildinfo
+
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyi
+*.env
+*.venv
+venv/
+ENV/
+env.bak/
+*.sqlite3
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ==========================
+# Java
+# ==========================
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.car
+*.class
+*.log
+hs_err_pid*
+target/
+bin/
+build/
+
+# ==========================
+# C / C++
+# ==========================
+*.o
+*.obj
+*.so
+*.exe
+*.dll
+*.out
+*.a
+*.lib
+*.pch
+*.idb
+*.pdb
+*.mod
+
+# ==========================
+# IDEs
+# ==========================
+# VS Code
+.vscode/
+.history/
+*.code-workspace
+
+# IntelliJ IDEA / PyCharm / WebStorm
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.project
+.classpath
+.cproject
+.settings/
+bin/
+
+# ==========================
+# macOS / Linux / Windows
+# ==========================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+.Trashes
+*.swp
+*.lock
+*.desktop
+
+# ==========================
+# Logs and databases
+# ==========================
+*.log
+*.sql
+*.sqlite
+*.db
+*.ldb
+
+# ==========================
+# Images / Media generated
+# ==========================
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mkv
+
+# ==========================
+# Archives
+# ==========================
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# ==========================
+# Temporary files / backups
+# ==========================
+*.bak
+*.tmp
+*.swp
+*.swo
+*.old
+*.orig
+
+# ==========================
+# Misc
+# ==========================
+*.DS_Store
+*.sublime-workspace
+*.sublime-project
+*.vagrant
+*.gradle
+*.idea/
+*.env
