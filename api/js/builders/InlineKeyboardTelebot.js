@@ -1,7 +1,7 @@
 import { InlineKeyboardBuilder } from "../core/InlineKeyboardBuilder.js";
 import { TelebotInlineAdapter } from "../adapters/telebot.adapter.js";
 
-export class InlineKeyboardTelegraf extends InlineKeyboardBuilder {
+export class InlineKeyboardTelebot extends InlineKeyboardBuilder {
 	constructor(options = {}) {
 		super(
 			new TelebotInlineAdapter(),
