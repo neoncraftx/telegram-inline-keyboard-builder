@@ -1,3 +1,9 @@
+![Logo](https://i.ibb.co/BKVnp8dZ/20260202-141042.png)
+[![npm version](https://img.shields.io/npm/v/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=cb3837)](https://www.npmjs.com/package/telegram-inline-keyboard-builder)
+[![npm downloads](https://img.shields.io/npm/dw/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=2CA5E0)](https://www.npmjs.com/package/telegram-inline-keyboard-builder)
+[![license](https://img.shields.io/npm/l/telegram-inline-keyboard-builder?style=flat&color=555555)](LICENSE)
+![Telegram](https://img.shields.io/badge/Telegram-Inline%20Keyboard-2CA5E0?style=flat&logo=telegram&logoColor=white)
+
 ### Inline Keyboard Builder
 
 Small inline button builder for Telegram, designed to be library-agnostic (Telegraf, node-telegram-bot-api, Aiogram, Pyrogram...).
@@ -62,7 +68,7 @@ new InlineKeyboardBuilder(adapter, buttonsPerRow = 2, autoWrapMaxChars = 0)
 new InlineKeyboardTelegraf({ buttonsPerRow = 2, autoWrapMaxChars = 0 })
 new InlineKeyboardNodeTelegram({ ... })
 
-Chainable Methods
+//Chainable Methods
 
 .addCallbackButton(text, callback_data, hide = false)
 .addUrlButton(text, url, hide = false)
@@ -80,6 +86,15 @@ Chainable Methods
 
 **Node‑Telegram adapt** → { reply_markup: { inline_keyboard: rows } }
 
+
+
+::: warning 
+To use `addPayButton`  only in **sendInvoice** or **replyWithInvoice** (telegraf).We set **hide** to **true** in the **options** 
+::: 
+
+``` js
+ addPayButton("My pay button :D",{hide: true});
+```
 
 
 ---
@@ -105,6 +120,7 @@ bot.start(ctx => {
 
 bot.launch();
 ```
+
 
 ## 🧾 Usage Example (node-telegram-bot-api)
 
@@ -140,7 +156,7 @@ adapter.createPay(text, hide = false)
 // build the final keyboard from rows (rows = array of array of buttons)
 adapter.buildKeyboard(rows)
 
-Minimal Example (node-telegram-bot-api)
+//Minimal Example (node-telegram-bot-api)
 
 export class NodeTelegramInlineAdapter {
   createCallback(text, data) {
@@ -162,19 +178,43 @@ export class NodeTelegramInlineAdapter {
 ```
 
 ---
+## API supported
+* `Telegraf`
+* `Node-telegram-bot-api`
+* `Puregram`
+* `Telebot`
+---
 
 ## 🧯 Common Errors & Debug
 
-**ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter.
+::: error 
+**ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter. 
+::: 
 
+
+::: error 
 **Missing adapter** → the core constructor must receive a valid adapter: new InlineKeyboardBuilder(adapter).
+:::
 
+::: error
 **Library not installed** (e.g., telegraf missing) → adapter should detect and throw a clear error: npm install telegraf.
+:::
 
+::: error
+**Invalide inlinekeyboard**: This error can occur when the payment button function is called and **hide** is set to **false**, which is the **default**. 
+:::
 
+``` js
+// Error
+ addPayButton("My pay button :D");
+// Correct
+addPayButton("My pay button :D",{hide: true});
+
+```
+### Why ? 🤷
 ---
 
-✍️ Contribution
+## ✍️ Contribution
 
 Everyone are welcome. Open an issue to discuss a feature before implementing major changes.
 
