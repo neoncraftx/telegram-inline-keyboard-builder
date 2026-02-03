@@ -88,9 +88,8 @@ new InlineKeyboardNodeTelegram({ ... })
 
 
 
-::: warning 
-To use `addPayButton`  only in **sendInvoice** or **replyWithInvoice** (telegraf).We set **hide** to **true** in the **options** 
-::: 
+> [!WARNING]
+> To use `addPayButton`  only in **sendInvoice** or **replyWithInvoice** (telegraf).We set **hide** to **true** in the **options** 
 
 ``` js
  addPayButton("My pay button :D",{hide: true});
@@ -187,22 +186,19 @@ export class NodeTelegramInlineAdapter {
 
 ## 🧯 Common Errors & Debug
 
-::: error 
-**ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter. 
-::: 
+> [!ERROR]
+> **ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter. 
 
 
-::: error 
-**Missing adapter** → the core constructor must receive a valid adapter: new InlineKeyboardBuilder(adapter).
-:::
+> [!ERROR]
+> **Missing adapter** → the core constructor must receive a valid adapter: new InlineKeyboardBuilder(adapter).
 
-::: error
-**Library not installed** (e.g., telegraf missing) → adapter should detect and throw a clear error: npm install telegraf.
-:::
+> [!ERROR]
+> **Library not installed** (e.g., telegraf missing) → adapter should detect and throw a clear error: npm install telegraf.
 
-::: error
-**Invalide inlinekeyboard**: This error can occur when the payment button function is called and **hide** is set to **false**, which is the **default**. 
-:::
+
+> [!ERROR]
+> **Invalide inlinekeyboard**: This error can occur when the payment button function is called and **hide** is set to **false**, which is the **default**. 
 
 ``` js
 // Error
