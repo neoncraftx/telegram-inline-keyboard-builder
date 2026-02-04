@@ -70,27 +70,7 @@ const keyboard = builder.build();
 ```
 Fully compliant with Telegram Bot API.
 
-<<<<<<< HEAD
-**Telegraf adapte** → Markup.inlineKeyboard(rows) (Markup object) 
-
-**Node‑Telegram adapt** → { reply_markup: { inline_keyboard: rows } }
-
-
-
-> [!WARNING]
-> To use `addPayButton`  only in **sendInvoice** or **replyWithInvoice** (telegraf).We set **hide** to **true** in the **options** 
-
-``` js
- addPayButton("My pay button :D",{hide: true});
-```
-
-
----
-
-## 🧩 Usage Example (Telegraf)
-=======
 ##  Usage Example (Telegraf)
->>>>>>> 46cb63a (Refactor: remove adapter to builder in JS folder + update README)
 
 ```js
 import { Telegraf } from "telegraf";
@@ -147,26 +127,10 @@ Using a visible payment button outside invoices will cause Telegram API errors.
 
 ## 🧯 Common Errors
 
-<<<<<<< HEAD
-> [!ERROR]
-> **ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter. 
-=======
 **Telegram API error**
->>>>>>> 46cb63a (Refactor: remove adapter to builder in JS folder + update README)
 
 Make sure the keyboard object is passed directly:
 
-<<<<<<< HEAD
-> [!ERROR]
-> **Missing adapter** → the core constructor must receive a valid adapter: new InlineKeyboardBuilder(adapter).
-
-> [!ERROR]
-> **Library not installed** (e.g., telegraf missing) → adapter should detect and throw a clear error: npm install telegraf.
-
-
-> [!ERROR]
-> **Invalide inlinekeyboard**: This error can occur when the payment button function is called and **hide** is set to **false**, which is the **default**. 
-=======
 ```js
 const keyboard = new InlineKeyboardBuilder(1)
 .addCallbackButton("Setting","show_setting")
@@ -178,7 +142,6 @@ ctx.reply("Text", keyboard);
 bot.sendMessage(chatId, "Text", keyboard); 
 
 // CORRECT ✅
->>>>>>> 46cb63a (Refactor: remove adapter to builder in JS folder + update README)
 
 // OR if you want to include it in the options 
 
@@ -245,8 +208,5 @@ You can send donations to the following addresses:
 
 ## ✍️ Contribution
 
-Everyone are welcome. Open an issue to discuss a feature before implementing major changes.
----
 Contributions are welcome ❤️
 Please open an issue before proposing major changes.
-
