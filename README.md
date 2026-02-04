@@ -245,12 +245,8 @@ You can send donations to the following addresses:
 
 ## ✍️ Contribution
 
-<<<<<<< HEAD
 Everyone are welcome. Open an issue to discuss a feature before implementing major changes.
-
-
 ---
-=======
 Contributions are welcome ❤️
 Please open an issue before proposing major changes.
->>>>>>> 46cb63a (Refactor: remove adapter to builder in JS folder + update README)
+
