@@ -1,187 +1,212 @@
-### Inline Keyboard Builder
+![Logo](https://i.ibb.co/BKVnp8dZ/20260202-141042.png) [![npm version](https://img.shields.io/npm/v/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=cb3837)](https://www.npmjs.com/package/telegram-inline-keyboard-builder) [![npm downloads](https://img.shields.io/npm/dw/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=2CA5E0)](https://www.npmjs.com/package/telegram-inline-keyboard-builder) [![license](https://img.shields.io/npm/l/telegram-inline-keyboard-builder?style=flat&color=555555)](LICENSE) ![Telegram](https://img.shields.io/badge/Telegram-Inline%20Keyboard-2CA5E0?style=flat&logo=telegram&logoColor=white) 
 
-Small inline button builder for Telegram, designed to be library-agnostic (Telegraf, node-telegram-bot-api, Aiogram, Pyrogram...).
+# Inline Keyboard Builder (v2) Universal inline keyboard builder for Telegram Bots. 
+Produces **pure Telegram Bot API compliant JSON**, usable with **any library** (Telegraf, node-telegram-bot-api, Pyrogram, Aiogram, Puregram, Telebot…). 
 
-> Principle: a central logic core handles button creation and placement. Adapters transform the neutral structure into the format expected by the target API.
+> Version 2 removes adapters and focuses on a single universal output: 
+> **valid `inline_keyboard` JSON as expected by Telegram API**. 
 
+--- 
+## 🚀 Key Features - Fluent & chainable API - Library-agnostic (no adapters, no dependencies) 
 
+- Produces **pure Telegram inline keyboard JSON** 
+- Auto-wrap & row control - Works with **any Telegram framework** 
+- Zero abstraction leak
 
-
----
-
-## 🚀 Key Features
-
-- Fluent, chainable API
-
-- Core independent of any Telegram library
-
-- Easy-to-write adapters (Telegraf, node-telegram-bot-api, Aiogram...)
-
-- Auto-wrap / control of buttons per row
-
-
-
----
+--- 
 
 ##  Installation
 
-If the package is published on npm:
-
-```bash
+```bash 
 npm install telegram-inline-keyboard-builder
 ```
-Then in your project:
-
+## importation
 ```js
-import { InlineKeyboardTelegraf } from "telegram-inline-keyboard-builder";
+import { InlineKeyboardBuilder } from "telegram-inline-keyboard-builder"; 
 ```
 
----
+## 🧠 Core Concept
 
-## Quick Concepts
+Telegram inline keyboards follow **one universal schema**.
 
-- **Core**: InlineKeyboardBuilder (placement logic, chainable API). Does not know any Telegram library.
+This builder:
 
-- **Adapter**: object responsible for creating buttons (callback/url/pay/custom) and producing the final structure (reply_markup/Markup depending on the library).
+* generates the keyboard **directly in Telegram format**
 
-- **Facade Builder**: ready-to-use classes that inject an adapter (e.g., InlineKeyboardTelegraf, InlineKeyboardNodeTelegram).
-
-
-
----
-
-## 🔧 Public Interface (API)
-
-### Constructors
+* lets you pass the result to **any Telegram library**
 ```js
-// Core (internal)
-
-new InlineKeyboardBuilder(adapter, buttonsPerRow = 2, autoWrapMaxChars = 0)
-
-// Facade (exposed to users, encapsulates core + adapter)
-new InlineKeyboardTelegraf({ buttonsPerRow = 2, autoWrapMaxChars = 0 })
-new InlineKeyboardNodeTelegram({ ... })
-
-Chainable Methods
-
-.addCallbackButton(text, callback_data, hide = false)
-.addUrlButton(text, url, hide = false)
-.addPayButton(text, options = {})
-.addCustomButton(btnObj)
-.addButtons(config) // array or { type, buttons: [...] }
-.setButtonsPerRow(n)
-.setAutoWrapMaxChars(n)
-.newRow() // forces a new row
-.build() // returns the keyboard formatted by the adapter
+{ reply_markup: { inline_keyboard: [...] } } 
 ```
-**Return of build()**: depends on the adapter.
+- **No adapters**.
+- **No wrappers**.
+- **No framework coupling**.
 
-**Telegraf adapte** → Markup.inlineKeyboard(rows) (Markup object) 
+## 🔧 Public API
 
-**Node‑Telegram adapt** → { reply_markup: { inline_keyboard: rows } }
+### Constructor
 
+```js
+new InlineKeyboardBuilder({ buttonsPerRow = 2, autoWrapMaxChars = 0 }) 
 
+//Chainable Methods
 
----
+.addCallbackButton(text, callback_data, hide = false) 
+.addUrlButton(text, url, hide = false) 
+.addPayButton(text, options = {}) 
+.addCustomButton(buttonObject) 
+.addButtons(config) 
+.setButtonsPerRow(n) 
+.setAutoWrapMaxChars(n) 
+.newRow() 
 
-## 🧩 Usage Example (Telegraf)
+// build
+.build() 
+
+const keyboard = builder.build(); 
+
+// Always returns:
+
+{ reply_markup: { inline_keyboard: [...] } } 
+```
+Fully compliant with Telegram Bot API.
+
+##  Usage Example (Telegraf)
 
 ```js
 import { Telegraf } from "telegraf";
-import { InlineKeyboardTelegraf } from "telegram-inline-keyboard-builder";
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+import { InlineKeyboardBuilder } from "telegram-inline-keyboard-builder"; 
+
+const bot = new Telegraf(process.env.BOT_TOKEN); 
 
 bot.start(ctx => {
-  const keyboard = new InlineKeyboardTelegraf({ buttonsPerRow: 2, autoWrapMaxChars: 24 })
-    .addCallbackButton("✅ OK", "OK_ACTION")
-    .addUrlButton("🌍 Site", "https://example.com")
-    .newRow()
-    .addCallbackButton("❌ Cancel", "CANCEL_ACTION")
-    .build();
+ const keyboard = new InlineKeyboardBuilder({ buttonsPerRow: 2, autoWrapMaxChars: 24 }) 
+.addCallbackButton("✅ OK", "OK_ACTION")
+.addUrlButton("🌍 Website", "https://example.com") 
+.newRow() 
+.addCallbackButton("❌ Cancel", "CANCEL_ACTION") 
+.build(); 
+ctx.reply("Welcome 👋\nChoose an action:", keyboard); }); 
 
-  ctx.reply("Welcome 👋\nChoose an action:", keyboard);
-});
+bot.launch(); 
 
-bot.launch();
 ```
-
-## 🧾 Usage Example (node-telegram-bot-api)
+## Usage Example (node-telegram-bot-api)
 
 ```js
-import TelegramBot from "node-telegram-bot-api";
-import { InlineKeyboardNodeTelegram } from "telegram-inline-keyboard-builder";
+import TelegramBot from "node-telegram-bot-api"; 
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+import { InlineKeyboardBuilder } from "telegram-inline-keyboard-builder"; 
 
-bot.onText(/\/start/, (msg) => {
-  const kb = new InlineKeyboardNodeTelegram()
-    .addCallbackButton("OK", "OK")
-    .addUrlButton("Site", "https://example.com")
-    .build();
+const bot = new TelegramBot(TOKEN, { polling: true }); 
+bot.onText(/\/start/, msg => { 
+const keyboard = new InlineKeyboardBuilder() 
+.addCallbackButton("OK", "OK") 
+.addUrlButton("Site", "https://example.com") 
+.build(); 
 
-  // kb === { reply_markup: { inline_keyboard: [...] } }
-  bot.sendMessage(msg.chat.id, "Hello", kb);
-});
-
+bot.sendMessage(msg.chat.id, "Hello", keyboard); }); 
 ```
----
 
-## 🛠️ Writing an Adapter (expected interface)
+## 💳 Payment Buttons
 
-A simple adapter must expose:
+### ⚠️ Telegram limitation
+
+> [!WARNING]
+> Payment buttons must only be used with:
+- sendInvoice
+- replyWithInvoice 
+
+They must be hidden in normal messages.
 
 ```js
-// create a button
-adapter.createCallback(text, data, hide = false)
-adapter.createUrl(text, url, hide = false)
-adapter.createPay(text, hide = false)
-
-// build the final keyboard from rows (rows = array of array of buttons)
-adapter.buildKeyboard(rows)
-
-Minimal Example (node-telegram-bot-api)
-
-export class NodeTelegramInlineAdapter {
-  createCallback(text, data) {
-    return { text, callback_data: data };
-  }
-
-  createUrl(text, url) {
-    return { text, url };
-  }
-
-  createPay(text) {
-    return { text, pay: true };
-  }
-
-  buildKeyboard(rows) {
-    return { reply_markup: { inline_keyboard: rows } };
-  }
-}
+.addPayButton("Pay now"); 
 ```
----
-##  ✅ API supported
-- Telegraf
-- Purgram
-- Node-telegram-bot-api
-- Telebot
----
 
-## 🧯 Common Errors & Debug
+Using a visible payment button outside invoices will cause Telegram API errors.
 
-**ReferenceError**: Markup is not defined → you are still using Markup in the core; move button creation into the adapter.
+## 🧯 Common Errors
 
-**Missing adapter** → the core constructor must receive a valid adapter: new InlineKeyboardBuilder(adapter).
+**Telegram API error**
 
-**Library not installed** (e.g., telegraf missing) → adapter should detect and throw a clear error: npm install telegraf.
+Make sure the keyboard object is passed directly:
 
+```js
+const keyboard = new InlineKeyboardBuilder(1)
+.addCallbackButton("Setting","show_setting")
+.build()
+// telegraf
+ctx.reply("Text", keyboard);
 
----
+// node telegram bot api
+bot.sendMessage(chatId, "Text", keyboard); 
 
-✍️ Contribution
+// CORRECT ✅
 
-Everyone are welcome. Open an issue to discuss a feature before implementing major changes.
+// OR if you want to include it in the options 
 
+const keyboard = new InlineKeyboardBuilder(1)
+.addCallbackButton("Setting","show_setting")
+.build()
 
----
+// telegraf
+ctx.reply("Text", {
+reply_markup: keyboard.reply_makup, // inline keyboard
+parse_mode: "HTML",
+// ...
+});
+
+// node telegram bot api
+bot.sendMessage(chatId, "Text", {
+reply_markup: keyboard.reply_makup, // inline keyboard
+parse_mode: "HTML",
+// ...
+); 
+```
+## Migration to V2
+
+- **V1**: The inline keyboard builder used **adapters** for each new API, resulting in code that was **unmaintainable** in case of **updates**.
+
+- **V2**: Here we **simply construct an object valid for all types of APIs** without **adapting** it.
+
+## 💜 Support This Project (Crypto)
+
+This project is maintained in my free time.  
+If it helped you, consider supporting it with a crypto donation ❤️  
+It helps me maintain and improve the project.
+
+You can send donations to the following addresses:
+
+| Crypto | Address |
+|--------|---------|
+| **USDT (TRC20)** | `0x607c1430601989d43c9CD2eeD9E516663e0BdD1F` |
+| **USDC (Polygon/ETH)** | `0x607c1430601989d43c9CD2eeD9E516663e0BdD1F` |
+| **Ethereum (ETH)** | `0x607c1430601989d43c9CD2eeD9E516663e0BdD1F` |
+| **Bitcoin (BTC)** | `bc1qmysepz6eerz2mqyx5dd0yy87c3gk6hccwla5x2` |
+| **Tron (TRX)** | `TE9RiTaDpx7DGZzCMw7qds51nzszKiyeR8` |
+| **TON** | `UQA1NPW4GqgIVa9R6lebN_0v64Q-Sz_nHrmK9LCk-FfdjVOH` |
+
+### 🔹 Optional QR Codes for quick mobile donation
+
+**USDT (TRC20)**  
+![USDT TRC20 QR](https://api.qrserver.com/v1/create-qr-code/?data=0x607c1430601989d43c9cd2eed9e516663e0bdd1f&size=150x150)
+
+**USDC**  
+![USDC QR](https://api.qrserver.com/v1/create-qr-code/?data=0x607c1430601989d43c9CD2eeD9E516663e0BdD1F&size=150x150)
+
+**Ethereum (ETH)**  
+![ETH QR](https://api.qrserver.com/v1/create-qr-code/?data=0x607c1430601989d43c9CD2eeD9E516663e0BdD1F&size=150x150)
+
+**Bitcoin (BTC)**  
+![BTC QR](https://api.qrserver.com/v1/create-qr-code/?data=bc1qmysepz6eerz2mqyx5dd0yy87c3gk6hccwla5x2&size=150x150)
+
+**Tron (TRX)**  
+![TRX QR](https://api.qrserver.com/v1/create-qr-code/?data=TE9RiTaDpx7DGZzCMw7qds51nzszKiyeR8&size=150x150)
+
+**TON**  
+![TON QR](https://api.qrserver.com/v1/create-qr-code/?data=UQA1NPW4GqgIVa9R6lebN_0v64Q-Sz_nHrmK9LCk-FfdjVOH&size=150x150)
+
+## ✍️ Contribution
+
+Contributions are welcome ❤️
+Please open an issue before proposing major changes.

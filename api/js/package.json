@@ -1,16 +1,17 @@
 {
 	"name": "telegram-inline-keyboard-builder",
-	"version": "1.1.3",
+	"version": "2.0.1",
 	"description": "Universal inline keyboard builder for Telegram APIs",
-	"main": "builders/InlineKeyboardTelegraf.js",
+	"main": "core/InlineKeyboardBuilder.js",
 	"type": "module",
 	"keywords": [
 		"telegram",
 		"inline-keyboard",
 		"telegraf",
-		"aiogram",
+		"puregram",
+		"telebot",
 		"builder",
-		"python-telegram-bot",
+		"telegram-bot",
 		"node-telegram-bot-api"
 	],
 	"author": "neoncraftx",

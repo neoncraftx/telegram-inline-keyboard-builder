@@ -1,89 +1,178 @@
+
 export class InlineKeyboardBuilder {
-	constructor(adapter, buttonsPerRow = 2, autoWrapMaxChars = 0) {
-		if (!adapter) {
-			throw new Error("InlineKeyboardBuilder requires an adapter");
-		}
-		this.adapter = adapter;
-		this.buttonsPerRow = buttonsPerRow;
-		this.autoWrapMaxChars = autoWrapMaxChars;
-		this._buttons = [];
-	}
+  constructor(buttonsPerRow = 2, autoWrapMaxChars = 0) {
+    this.buttonsPerRow = buttonsPerRow;
+    this.autoWrapMaxChars = autoWrapMaxChars; // 0 = disabled
+    this._buttons = []; // flat list of buttons + row markers
+  }
 
-	_pushButton(btn) {
-		this._buttons.push(btn);
-		return this;
-	}
+  // ---------- internal ----------
+  _pushButton(btn) {
+    this._buttons.push(btn);
+    return this;
+  }
 
-	addCallbackButton(text, callback_data, hide = false) {
-		return this._pushButton(
-			this.adapter.createCallback(text, callback_data, hide)
-		);
-	}
+  // ---------- button helpers ----------
+  addCallbackButton(text, callback_data) {
+    if (!text || !callback_data) {
+      throw new Error("Callback button requires text and callback_data");
+    }
 
-	addUrlButton(text, url, hide = false) {
-		return this._pushButton(
-			this.adapter.createUrl(text, url, hide)
-		);
-	}
+    return this._pushButton({
+      text,
+      callback_data,
+    });
+  }
 
-	addPayButton(text, options = {}) {
-		const hide = options.hide ?? false;
-		return this._pushButton(
-			this.adapter.createPay(text, hide)
-		);
-	}
+  addUrlButton(text, url) {
+    if (!text || !url) {
+      throw new Error("URL button requires text and url");
+    }
 
-	addCustomButton(btnObj) {
-		return this._pushButton(btnObj);
-	}
+    return this._pushButton({
+      text,
+      url,
+    });
+  }
 
-	newRow() {
-		this._buttons.push({ __newRow: true });
-		return this;
-	}
-	_layoutButtons() {
-		const rows = [];
-		let row = [];
-		let rowChars = 0;
+  addPayButton(text) {
+    if (!text) {
+      throw new Error("Pay button requires text");
+    }
 
-		const pushRow = () => {
-			if (row.length > 0) {
-				rows.push(row);
-				row = [];
-				rowChars = 0;
-			}
-		};
+    return this._pushButton({
+      text,
+      pay: true,
+    });
+  }
 
-		for (const b of this._buttons) {
-			if (b && b.__newRow) {
-				pushRow();
-				continue;
-			}
+  addCustomButton(buttonObject) {
+    if (!buttonObject || !buttonObject.text) {
+      throw new Error("Custom button must be a valid InlineKeyboardButton object");
+    }
 
-			const text = b?.text || "";
-			const len = String(text).length || 0;
+    return this._pushButton(buttonObject);
+  }
 
-			if (
-				this.autoWrapMaxChars > 0 &&
-				row.length > 0 &&
-				rowChars + len > this.autoWrapMaxChars
-			) {
-				pushRow();
-			}
+  // ---------- layout controls ----------
+  setButtonsPerRow(n) {
+    this.buttonsPerRow = Math.max(1, Math.floor(n));
+    return this;
+  }
 
-			if (row.length >= this.buttonsPerRow) {
-				pushRow();
-			}
+  setAutoWrapMaxChars(n) {
+    this.autoWrapMaxChars = Math.max(0, Math.floor(n));
+    return this;
+  }
 
-			row.push(b);
-			rowChars += len;
-		}
+  newRow() {
+    this._buttons.push({ __newRow: true });
+    return this;
+  }
 
-		pushRow();
-		return rows;
-	}
+  // ---------- config-based API ----------
+  _addButtonFromConfig(btn) {
+    const { type, text } = btn;
 
-	build() {
-		return this.adapter.buildKeyboard(this._layoutButtons());
-	}
+    if (!type || !text) {
+      throw new Error("Button must have at least { type, text }");
+    }
+
+    switch (type) {
+      case "callback":
+        if (!btn.data) throw new Error("Callback button requires `data`");
+        this.addCallbackButton(text, btn.data);
+        break;
+
+      case "url":
+        if (!btn.url) throw new Error("URL button requires `url`");
+        this.addUrlButton(text, btn.url);
+        break;
+
+      case "pay":
+        this.addPayButton(text);
+        break;
+
+      case "custom":
+        if (!btn.button) throw new Error("Custom button requires `button`");
+        this.addCustomButton(btn.button);
+        break;
+
+      default:
+        throw new Error(`Unknown button type: ${type}`);
+    }
+  }
+
+  addButtons(config) {
+    // Case 1: array of buttons
+    if (Array.isArray(config)) {
+      for (const btn of config) {
+        this._addButtonFromConfig(btn);
+      }
+      return this;
+    }
+
+    // Case 2: grouped config
+    const { type, buttons } = config;
+    if (!type || !Array.isArray(buttons)) {
+      throw new Error("addButtons: invalid config");
+    }
+
+    for (const btn of buttons) {
+      this._addButtonFromConfig({ type, ...btn });
+    }
+
+    return this;
+  }
+
+  // ---------- layout engine ----------
+  _layoutButtons() {
+    const rows = [];
+    let row = [];
+    let rowChars = 0;
+
+    const pushRow = () => {
+      if (row.length > 0) {
+        rows.push(row);
+        row = [];
+        rowChars = 0;
+      }
+    };
+
+    for (const b of this._buttons) {
+      if (b.__newRow) {
+        pushRow();
+        continue;
+      }
+
+      const textLength = String(b.text || "").length;
+
+      if (
+        this.autoWrapMaxChars > 0 &&
+        row.length > 0 &&
+        rowChars + textLength > this.autoWrapMaxChars
+      ) {
+        pushRow();
+      }
+
+      if (row.length >= this.buttonsPerRow) {
+        pushRow();
+      }
+
+      row.push(b);
+      rowChars += textLength;
+    }
+
+    pushRow();
+    return rows;
+  }
+
+  // ---------- final output ----------
+  build() {
+    return {
+      reply_markup: {
+        inline_keyboard: this._layoutButtons(),
+      },
+    };
+  }
 }
