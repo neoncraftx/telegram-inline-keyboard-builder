@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "telegram-inline-builder"
+name = "telegram-inline-keyboard-builder"
 version = "1.0.0"
 description = "Library-agnostic inline keyboard builder for Telegram bots (Aiogram, Pyrogram, python-telegram-bot)."
 readme = "README.md"
@@ -55,10 +55,5 @@ all = [
 ]
 
 
-[tool.setuptools]
-packages = [
-  "telegram_inline_keyboard_builder",
-  "telegram_inline_keyboard_builder.core",
-  "telegram_inline_keyboard_builder.adapters",
-  "telegram_inline_keyboard_builder.builders"
-]
+[tool.setuptools.packages.find]
+where = ["."]
