@@ -5,8 +5,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-inline-keyboard-builder"
-version = "1.0.0"
-description = "Library-agnostic inline keyboard builder for Telegram bots (Aiogram, Pyrogram, python-telegram-bot)."
+version = "2.0.0"
+
+description = "Library-agnostic universal inline keyboard builder for python Telegram bots APIs"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
@@ -21,8 +22,7 @@ keywords = [
   "aiogram",
   "pyrogram",
   "python-telegram-bot",
-  "builder",
-  "adapter"
+  "builder"
 ]
 
 classifiers = [
@@ -39,21 +39,6 @@ classifiers = [
 Homepage = "https://github.com/neoncraftx/telegram-inline-keyboard-builder"
 Repository = "https://github.com/neoncraftx/telegram-inline-keyboard-builder"
 Issues = "https://github.com/neoncraftx/telegram-inline-keyboard-builder/issues"
-
-
-# Optional dependencies for adapter
-[project.optional-dependencies]
-aiogram = ["aiogram>=3.0"]
-pyrogram = ["pyrogram>=2.0"]
-ptb = ["python-telegram-bot>=20.0"]
-
-# Install all adapters at once
-all = [
-  "aiogram>=3.0",
-  "pyrogram>=2.0",
-  "python-telegram-bot>=20.0"
-]
-
 
 [tool.setuptools.packages.find]
 where = ["."]
