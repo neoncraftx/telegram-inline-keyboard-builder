@@ -1,6 +1,6 @@
 {
 	"name": "telegram-inline-keyboard-builder",
-	"version": "2.0.1",
+	"version": "2.1.2",
 	"description": "Universal inline keyboard builder for Telegram APIs",
 	"main": "core/InlineKeyboardBuilder.js",
 	"type": "module",

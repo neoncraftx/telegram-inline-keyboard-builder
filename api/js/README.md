@@ -3,6 +3,79 @@
 # Inline Keyboard Builder (v2) Universal inline keyboard builder for Telegram Bots. 
 Produces **pure Telegram Bot API compliant JSON**, usable with **any library** (Telegraf, node-telegram-bot-api, Pyrogram, Aiogram, Puregram, Telebot…). 
 
+## 🔥 New update 🔥
+ - Added color style for premium Telegram buttons and icons 
+- Builder method typing 
+
+## How does this feature work?
+Simply specify a new parameter to the function to add the URL and class.
+
+```js
+addCallbackButton(text, callback_data, options = {})
+addCUrlButton(text, url, options = {})
+```
+
+The options must contain at least one of these parameters: either `icon_custom_emoji_id` or `style`
+
+```js 
+// Example
+const keyboard = new InlineKeyboardBuilder(1)
+		.addCallbackButton("blue button", "click", {
+			style: "primary"
+		})
+		.addCallbackButton("blue button with icon", "click", {
+			icon_custom_emoji_id: "4963511421280192936",
+			style: "primary"
+		})
+		.addCallbackButton("Just a icon","click",{
+		  icon_custom_emoji_id: "4963511421280192936"
+		  });
+```
+
+> **Warning**: `icon_custom_emoji_id` only works if the bot owner has a Telegram premium subscription.
+
+## Example Usage (telegraf)
+```js
+// start command
+bot.start(async ctx => {
+	const keyboard = new InlineKeyboardBuilder(1)
+		.addCallbackButton("blue", "click", {
+			style: "primary"
+		})
+		.addCallbackButton("blue with icon", "click", {
+			icon_custom_emoji_id: "4963511421280192936",
+			style: "primary"
+		})
+		.addCallbackButton("green", "click", {
+			style: "success"
+		})
+		.addCallbackButton("green with icon", "click", {
+			icon_custom_emoji_id: "4963511421280192936",
+			style: "success"
+		})
+		.addCallbackButton("red", "danger",{
+		  style: "danger"
+		  })
+		.addCallbackButton("red with icon", "click", {
+			icon_custom_emoji_id: "4963511421280192936",
+			style: "danger"
+		})
+		.addCallbackButton("Just a icon","click",{
+		  icon_custom_emoji_id: "4963511421280192936"
+		  })
+	await ctx.reply(
+		"🚀 New Button style 🔥🔥🔥",
+		keyboard.build()
+	);
+});
+```
+
+### Results
+![Example results](https://i.ibb.co/1tgyYQCv/IMG-20260211-054905-332.jpg)
+
+---
+## other log
+
 > Version 2 removes adapters and focuses on a single universal output: 
 > **valid `inline_keyboard` JSON as expected by Telegram API**. 
 
