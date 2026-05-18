@@ -12,7 +12,7 @@ Simply specify a new parameter to the function to add the URL and class.
 
 ```js
 addCallbackButton(text, callback_data, options = {})
-addCUrlButton(text, url, options = {})
+addUrlButton(text, url, options = {})
 ```
 
 The options must contain at least one of these parameters: either `icon_custom_emoji_id` or `style`
@@ -33,6 +33,39 @@ const keyboard = new InlineKeyboardBuilder(1)
 ```
 
 > **Warning**: `icon_custom_emoji_id` only works if the bot owner has a Telegram premium subscription.
+
+## Version 3: Constructeur enrichi et typage renforcé
+La release v3 du builder met l’accent sur la stabilité, le typage TypeScript et des helpers plus pratiques.
+
+### Points clés de la mise à jour
+- Migration et typage TypeScript
+  - signatures fortement typées pour `addCallbackButton`, `addUrlButton`, `addCallbackButtonFromParts`, `callbackDataParse`, `preview` et `addButtons`
+  - meilleure autocomplétion dans l’éditeur et détection d’erreurs plus rapide
+- Nouvelles fonctionnalités
+  - `addCallbackButtonFromParts(scope, action, id, text, options, separator)` construit automatiquement le `callback_data`
+  - `preview()` affiche la structure de chaque ligne de bouton
+  - `callbackDataParse(data, separator)` décode la chaîne de callback en `{ scope, action, id }`
+- Corrections importantes
+  - cohérence des objets `InlineKeyboardButton`
+  - gestion plus fiable des nouvelles lignes et de l’auto-wrap
+  - prévention des erreurs de type dans la prévisualisation
+
+### Exemple concret de la v3
+```js
+const builder = new InlineKeyboardBuilder(2, 30)
+  .addCallbackButtonFromParts("user", "like", 42, "Like", { style: "success" })
+  .addCallbackButtonFromParts("user", "dislike", 43, "Dislike", { style: "danger" })
+  .newRow()
+  .addUrlButton("Docs", "https://github.com/neoncraftx/telegram-inline-keyboard-builder")
+  .addCallbackButton("Cancel", "cancel_action");
+
+console.log(builder.preview());
+// Row 1: [Like](callback:user:like:42) | [Dislike](callback:user:dislike:43)
+// Row 2: [Docs](https://github.com/neoncraftx/telegram-inline-keyboard-builder) | [Cancel](callback:cancel_action)
+
+console.log(builder.callbackDataParse("user:like:42"));
+// { scope: "user", action: "like", id: "42" }
+```
 
 ## Example Usage (telegraf)
 ```js
@@ -119,18 +152,23 @@ This builder:
 ### Constructor
 
 ```js
-new InlineKeyboardBuilder({ buttonsPerRow = 2, autoWrapMaxChars = 0 }) 
+new InlineKeyboardBuilder(buttonsPerRow = 2, autoWrapMaxChars = 0)
+```
 
-//Chainable Methods
+### Chainable Methods
 
-.addCallbackButton(text, callback_data, hide = false) 
-.addUrlButton(text, url, hide = false) 
-.addPayButton(text, options = {}) 
-.addCustomButton(buttonObject) 
-.addButtons(config) 
-.setButtonsPerRow(n) 
-.setAutoWrapMaxChars(n) 
-.newRow() 
+```js
+.addCallbackButton(text, callback_data, options = {})
+.addCallbackButtonFromParts(scope, action, id, text, options = {}, separator = ":")
+.addUrlButton(text, url, options = {})
+.addPayButton(text)
+.addCustomButton(buttonObject)
+.addButtons(config)
+.setButtonsPerRow(n)
+.setAutoWrapMaxChars(n)
+.newRow()
+.preview()
+```
 
 // build
 .build() 
@@ -153,7 +191,7 @@ import { InlineKeyboardBuilder } from "telegram-inline-keyboard-builder";
 const bot = new Telegraf(process.env.BOT_TOKEN); 
 
 bot.start(ctx => {
- const keyboard = new InlineKeyboardBuilder({ buttonsPerRow: 2, autoWrapMaxChars: 24 }) 
+ const keyboard = new InlineKeyboardBuilder(2, 24)
 .addCallbackButton("✅ OK", "OK_ACTION")
 .addUrlButton("🌍 Website", "https://example.com") 
 .newRow() 
