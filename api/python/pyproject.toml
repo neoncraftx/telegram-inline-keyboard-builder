@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-inline-keyboard-builder"
-version = "2.0.0"
+version = "3.0.0"
 
 description = "Library-agnostic universal inline keyboard builder for python Telegram bots APIs"
 readme = "README.md"
@@ -14,6 +14,10 @@ authors = [
   { name = "neoncraftx", email = "neoncraftx@gmail.com" }
 ]
 requires-python = ">=3.8"
+
+dependencies = [
+  "typing_extensions"
+]
 
 keywords = [
   "telegram",
