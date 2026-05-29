@@ -1,3 +1,4 @@
+import { layoutButtons } from "./layout.js";
 import type {
   InlineKeyboardButton,
   buttonConfig,
@@ -5,6 +6,18 @@ import type {
   groupedButtonConfig,
 } from "./types/buttons.js";
 import type { PaginatedListOptions } from "./types/utils.js";
+import {
+  ValidationEngine,
+  ValidationError,
+  type BuildOptions,
+  type DiagnosticSeverity,
+  type RulesConfig,
+  type ValidateOptions,
+  type ValidationMode,
+  type ValidationPlugin,
+  type ValidationResult,
+  type ValidationRule,
+} from "./validator/index.js";
 
 /**
  * Builder class for creating Telegram inline keyboards with optional
@@ -17,6 +30,8 @@ export class InlineKeyboardBuilder {
   autoWrapMaxChars: number;
   /** Flat list of buttons with optional row markers. */
   buttons: InlineKeyboardButton[];
+  /** Validation engine (rules, plugins, modes). */
+  private readonly _validation: ValidationEngine;
   /**
    * Creates a new InlineKeyboardBuilder instance.
    *
@@ -27,6 +42,7 @@ export class InlineKeyboardBuilder {
     this.buttonsPerRow = buttonsPerRow;
     this.autoWrapMaxChars = autoWrapMaxChars;
     this.buttons = []; // Flat list of buttons with optional row markers
+    this._validation = new ValidationEngine();
   }
 
   // ---------- internal ----------
@@ -440,47 +456,111 @@ export class InlineKeyboardBuilder {
    * @returns Array of rows with buttons.
    */
   private _layoutButtons() {
-    const rows: InlineKeyboardButton[][] = [];
-    let row: InlineKeyboardButton[] = [];
-    let rowChars = 0;
+    return layoutButtons(
+      this.buttons,
+      this.buttonsPerRow,
+      this.autoWrapMaxChars,
+    );
+  }
 
-    const pushRow = () => {
-      if (row.length > 0) {
-        rows.push([...row]);
-        row = [];
-        rowChars = 0;
-      }
-    };
+  // ---------- validation ----------
+  /**
+   * Runs validation rules against the current keyboard state.
+   * @param options - Mode and context overrides.
+   */
+  validate(options: ValidateOptions = {}): ValidationResult {
+    return this._validation.validate(this._keyboardInput(), options);
+  }
 
-    for (const b of this.buttons) {
-      if (b.__newRow) {
-        pushRow();
-        continue;
-      }
-      const textLength = String(b.text || "").length;
-      if (
-        this.autoWrapMaxChars > 0 &&
-        row.length > 0 &&
-        rowChars + textLength > this.autoWrapMaxChars
-      ) {
-        pushRow();
-      }
-      if (row.length >= this.buttonsPerRow) {
-        pushRow();
-      }
-      row.push(b);
-      rowChars += textLength;
+  /**
+   * Registers a custom validation rule.
+   */
+  registerRule(rule: ValidationRule): InlineKeyboardBuilder {
+    this._validation.registerRule(rule);
+    return this;
+  }
+
+  /**
+   * Loads a validation plugin (rules + setup hook).
+   */
+  use(plugin: ValidationPlugin): InlineKeyboardBuilder {
+    this._validation.use(plugin);
+    return this;
+  }
+
+  /**
+   * Enables/disables rules and overrides severities.
+   */
+  setRules(config: RulesConfig): InlineKeyboardBuilder {
+    this._validation.setRules(config);
+    return this;
+  }
+
+  /**
+   * Sets the default validation mode for build({ validate: true }).
+   */
+  setValidationMode(mode: ValidationMode): InlineKeyboardBuilder {
+    this._validation.setDefaultMode(mode);
+    return this;
+  }
+
+  /**
+   * Sets the default validation context (message, invoice, etc.).
+   */
+  setValidationContext(
+    contextType: ValidateOptions["contextType"],
+  ): InlineKeyboardBuilder {
+    if (contextType !== undefined) {
+      this._validation.setContextType(contextType);
     }
-    pushRow();
-    return rows;
+    return this;
+  }
+
+  setRuleEnabled(ruleId: string, enabled: boolean): InlineKeyboardBuilder {
+    this._validation.setRuleEnabled(ruleId, enabled);
+    return this;
+  }
+
+  setRuleSeverity(
+    ruleId: string,
+    severity: DiagnosticSeverity,
+  ): InlineKeyboardBuilder {
+    this._validation.setRuleSeverity(ruleId, severity);
+    return this;
+  }
+
+  private _keyboardInput() {
+    return {
+      buttons: this.buttons,
+      buttonsPerRow: this.buttonsPerRow,
+      autoWrapMaxChars: this.autoWrapMaxChars,
+    };
+  }
+
+  private _applyValidationOnBuild(options?: BuildOptions): ValidationResult | null {
+    if (!options?.validate) {
+      return null;
+    }
+    const validateOptions: ValidateOptions = {};
+    if (options.validationMode !== undefined) {
+      validateOptions.mode = options.validationMode;
+    }
+    const result = this.validate(validateOptions);
+    const mode = result.mode;
+    if (mode === "strict" && !result.ok) {
+      throw new ValidationError(result);
+    }
+    return result;
   }
 
   // ---------- final output ----------
   /**
    * Builds the final Telegram reply_markup object.
+   * @param options - Optional validation before returning markup.
    * @returns Telegram inline_keyboard reply_markup.
    */
-  build() {
+  build(options?: BuildOptions) {
+    this._applyValidationOnBuild(options);
     return {
       reply_markup: {
         inline_keyboard: this._layoutButtons(),
@@ -488,3 +568,27 @@ export class InlineKeyboardBuilder {
     };
   }
 }
+
+export {
+  ValidationEngine,
+  ValidationError,
+  createValidationEngine,
+  createDiagnostic,
+  normalizeKeyboard,
+  builtinRules,
+  RULE_IDS,
+} from "./validator/index.js";
+
+export type {
+  BuildOptions,
+  Diagnostic,
+  DiagnosticLocation,
+  DiagnosticSeverity,
+  RulesConfig,
+  ValidateOptions,
+  ValidationContextType,
+  ValidationMode,
+  ValidationPlugin,
+  ValidationResult,
+  ValidationRule,
+} from "./validator/index.js";
