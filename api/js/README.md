@@ -1,13 +1,26 @@
 ![Logo](https://i.ibb.co/BKVnp8dZ/20260202-141042.png) [![npm version](https://img.shields.io/npm/v/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=cb3837)](https://www.npmjs.com/package/telegram-inline-keyboard-builder) [![npm downloads](https://img.shields.io/npm/dw/telegram-inline-keyboard-builder?style=flat&logo=npm&logoColor=white&color=2CA5E0)](https://www.npmjs.com/package/telegram-inline-keyboard-builder) [![license](https://img.shields.io/npm/l/telegram-inline-keyboard-builder?style=flat&color=555555)](LICENSE) ![Telegram](https://img.shields.io/badge/Telegram-Inline%20Keyboard-2CA5E0?style=flat&logo=telegram&logoColor=white)
 
-# Inline Keyboard Builder (v3) Universal inline keyboard builder for Telegram Bots.
+# Inline Keyboard Builder (v3.2.3)
+
+Universal inline keyboard builder for Telegram Bots.
 
 Produces **pure Telegram Bot API compliant JSON**, usable with **any library** (Telegraf, node-telegram-bot-api, Pyrogram, Aiogram, Puregram, Telebot…).
+
+**New in 3.2.3:** [Smart Validation & Warnings](#version-323--smart-validation--warnings) — catch `callback_data` limits, invalid URLs, pay-button context errors, and more **before** sending to Telegram.
 
 ---
 
 ## Table of Contents
 
+- [New in v3.2.3 — Smart Validation & Warnings](#version-323--smart-validation--warnings)
+  - [Why use it](#why-use-smart-validation)
+  - [Performance & design](#performance-and-design-optimizations)
+  - [Validation modes](#validation-modes)
+  - [Built-in rules](#built-in-rules)
+  - [Public validation API](#validation-api-on-the-builder)
+  - [Concrete examples](#concrete-validation-examples)
+  - [Custom plugins](#custom-plugins-eslint-style)
+  - [Migration from 3.1.x](#migration-to-323)
 - [New in v3](#version-3-enriched-builder-and-stronger-typing)
   - [Key highlights](#key-highlights-of-the-update)
   - [addCallbackButtonFromParts()](#addcallbackbuttonfromparts)
@@ -28,6 +41,326 @@ Produces **pure Telegram Bot API compliant JSON**, usable with **any library** (
 - [Migration to V2](#migration-to-v2)
 - [Support this project](#-support-this-project-crypto)
 - [Contribution](#️-contribution)
+
+---
+
+## Version 3.2.3 — Smart Validation & Warnings
+
+**v3.2.3** adds a native, **ESLint-style validation engine** for inline keyboards. It detects Telegram API mistakes **before** `build()` returns markup, surfaces **non-blocking warnings**, supports **custom rules via plugins**, and stays **100% framework-agnostic** (no Telegraf / node-telegram-bot-api coupling).
+
+> Full reference: [`docs/validation.md`](../../docs/validation.md) · Live demo: [`test-demo/product-catalog-bot`](../../test-demo/product-catalog-bot)
+
+### Why use Smart Validation?
+
+| Problem without validation | What v3.2.3 gives you |
+| -------------------------- | --------------------- |
+| `callback_data` > 64 bytes → silent Telegram API error | `callback-data-too-long` with **row/column** location + hint |
+| Pay button on a normal message → runtime failure | `incompatible-button-context` when `contextType` is not `invoice` |
+| Duplicate `callback_data` → confusing handler behaviour | `duplicate-callback-data` warning before deploy |
+| Invalid URL (`ftp://…`, typo) | `invalid-url` at build time |
+| Empty rows after chained `newRow()` | `empty-row` warning |
+| Team-specific conventions (no `debug:` prefix) | `registerRule()` / `use(plugin)` |
+
+**Main advantages:**
+
+1. **Shift-left quality** — catch keyboard bugs in development, unit tests, or CI, not in production Telegram errors.
+2. **Structured diagnostics** — each issue includes `ruleId`, `severity`, `message`, optional `location` (`row`, `column`, `flatIndex`), and `hint`.
+3. **Three modes** — `strict` (block invalid builds), `warn` (report + still build), `silent` (collect only; for programmatic checks).
+4. **Non-breaking by default** — `build()` without options behaves exactly like v3.1.x.
+5. **Extensible** — enable/disable rules, override severities, ship team plugins like ESLint configs.
+6. **Typed end-to-end** — `ValidationResult`, `Diagnostic`, `ValidationRule`, `ValidationPlugin`, `ValidationError` exported from the package.
+
+### Performance and design optimizations
+
+The engine is designed to stay **lightweight** for a library (no Zod, no AJV, no extra runtime dependencies):
+
+| Optimization | Detail |
+| -------------- | ------ |
+| **Normalize once** | Each `validate()` call runs `normalizeKeyboard()` a single time; all rules share the same `RuleContext`. |
+| **Shared layout engine** | `layout.ts` is used by both `InlineKeyboardBuilder._layoutButtons()` and the validator — layout logic is not duplicated. |
+| **Active rules only** | `RuleRegistry.getActiveRules()` skips disabled rules; no work for turned-off checks. |
+| **O(n) rules** | Each built-in rule iterates the flat button list once; suitable for large paginated keyboards. |
+| **Zero new dependencies** | Validation ships inside the existing package footprint (~35 KB ESM/CJS build). |
+| **Lazy opt-in** | No validation cost until you call `validate()` or `build({ validate: true })`. |
+
+### Validation modes
+
+| Mode | `validate()` | `build({ validate: true })` |
+| ---- | -------------- | --------------------------- |
+| `strict` | Returns `ValidationResult`; you may throw manually | Throws `ValidationError` if any **error**-severity diagnostic exists |
+| `warn` | Returns diagnostics; `ok === false` if errors exist | Never throws; always returns markup |
+| `silent` | Same as `warn` (no console side effects) | Same as `warn` |
+
+Default mode: **`warn`** (set once with `.setValidationMode("strict")` for production pipelines).
+
+```ts
+builder.setValidationMode("strict"); // default for subsequent build({ validate: true })
+```
+
+### Built-in rules
+
+| Rule ID | Default severity | Detects |
+| ------- | ---------------- | ------- |
+| `callback-data-too-long` | error | `callback_data` > 64 UTF-8 bytes |
+| `empty-button-text` | error | Missing or whitespace-only `text` |
+| `invalid-url` | error | URL buttons without valid `http://` or `https://` |
+| `empty-row` | warning | Empty rows / consecutive `newRow()` |
+| `too-many-buttons-per-row` | error | More than 8 buttons per row (Telegram limit) |
+| `incompatible-button-context` | error | Pay button outside `invoice`, multiple actions on one button |
+| `inconsistent-configuration` | error / warning | Invalid `style`, `buttonsPerRow`, etc. |
+| `duplicate-callback-data` | warning | Same `callback_data` used twice |
+| `unexpected-null-undefined` | error | Nullish required fields on buttons |
+| `invalid-keyboard-structure` | error / warning | Malformed buttons or empty keyboard |
+
+Constants exported for tooling: `RULE_IDS`, `TELEGRAM_CALLBACK_DATA_MAX_BYTES`, `TELEGRAM_MAX_BUTTONS_PER_ROW`.
+
+### Validation API on the builder
+
+```ts
+// Manual check (tests, handlers, CI)
+const result = builder.validate({ mode: "warn", contextType: "message" });
+console.log(result.ok, result.errors, result.warnings);
+
+// Validate then build — strict blocks invalid markup
+const markup = builder.build({ validate: true, validationMode: "strict" });
+
+// Plugins & rule configuration (ESLint-style)
+builder
+  .registerRule(myRule)
+  .use(myPlugin)
+  .setRules({ disabled: ["duplicate-callback-data"] })
+  .setRuleSeverity("empty-row", "error")
+  .setRuleEnabled("invalid-url", true)
+  .setValidationContext("invoice");
+
+// Standalone engine (no builder instance)
+import { createValidationEngine } from "telegram-inline-keyboard-builder";
+
+const engine = createValidationEngine();
+engine.validate({ buttons: [...], buttonsPerRow: 2, autoWrapMaxChars: 0 });
+```
+
+**New chainable methods (v3.2.3):**
+
+```ts
+.validate(options?)
+.registerRule(rule)
+.use(plugin)
+.setRules(config)
+.setRuleEnabled(ruleId, enabled)
+.setRuleSeverity(ruleId, severity)
+.setValidationMode(mode)
+.setValidationContext("default" | "message" | "invoice" | "edit")
+```
+
+**Updated `build()` signature:**
+
+```ts
+.build() // unchanged — no validation
+.build({ validate: true, validationMode: "strict" | "warn" | "silent" })
+```
+
+### Concrete validation examples
+
+#### Production — strict mode before sending (Telegraf)
+
+```ts
+import { InlineKeyboardBuilder, ValidationError } from "telegram-inline-keyboard-builder";
+
+function buildMenuKeyboard() {
+  const kb = new InlineKeyboardBuilder(2);
+  kb.setValidationMode("strict");
+  kb.setValidationContext("message");
+
+  kb.addCallbackButtonFromParts("menu", "home", 1, "🏠 Home");
+  kb.addCallbackButtonFromParts("menu", "settings", 1, "⚙️ Settings");
+
+  try {
+    return kb.build({ validate: true, validationMode: "strict" });
+  } catch (e) {
+    if (e instanceof ValidationError) {
+      console.error(e.result.errors);
+    }
+    throw e;
+  }
+}
+
+bot.start((ctx) => ctx.reply("Menu", buildMenuKeyboard()));
+```
+
+#### Development — warn mode + log diagnostics
+
+```ts
+const kb = new InlineKeyboardBuilder();
+kb.addCallbackButton("OK", "ok");
+kb.addCallbackButton("Duplicate", "ok"); // triggers duplicate-callback-data
+
+const result = kb.validate({ mode: "warn" });
+if (!result.ok) {
+  for (const d of result.diagnostics) {
+    console.warn(
+      `[${d.severity}] ${d.ruleId} @ row ${d.location?.row}: ${d.message}`,
+    );
+  }
+}
+
+// Still safe to inspect markup in dev
+const markup = kb.build({ validate: true, validationMode: "warn" });
+```
+
+#### Invoice keyboard — pay button context
+
+```ts
+const invoiceKb = new InlineKeyboardBuilder(1);
+invoiceKb.setValidationContext("invoice");
+invoiceKb.addPayButton("Pay 100 ⭐");
+
+// ✅ valid — pay buttons allowed in invoice context
+invoiceKb.validate({ contextType: "invoice" });
+
+const messageKb = new InlineKeyboardBuilder(1);
+messageKb.addPayButton("Pay now");
+
+// ❌ incompatible-button-context — pay on normal message
+messageKb.validate({ contextType: "message" });
+```
+
+#### Paginated list + validation (real-world catalog)
+
+```ts
+const kb = new InlineKeyboardBuilder(1);
+kb.setValidationMode("strict");
+
+kb.paginatedList({
+  items: products,
+  page: 2,
+  perPage: 5,
+  render: (p) => ({
+    text: `🛍 ${p.name}`,
+    callback_data: `product:view:${p.id}`, // keep under 64 bytes!
+  }),
+  pagination: {
+    callback: (p) => `catalog:page:${p}`,
+    hideIfSinglePage: true,
+  },
+});
+
+// Catches long callback_data from render(), empty rows, row overflow
+const markup = kb.build({ validate: true, validationMode: "strict" });
+await ctx.editMessageReplyMarkup(markup.reply_markup);
+```
+
+#### Unit test — assert rule IDs
+
+```ts
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { InlineKeyboardBuilder, RULE_IDS } from "telegram-inline-keyboard-builder";
+
+it("rejects callback_data over 64 bytes", () => {
+  const kb = new InlineKeyboardBuilder();
+  kb.addCustomButton({ text: "Go", callback_data: "x".repeat(65) });
+  const result = kb.validate();
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.errors.some((d) => d.ruleId === RULE_IDS.CALLBACK_DATA_TOO_LONG),
+  );
+});
+```
+
+#### Sample diagnostic output
+
+```json
+{
+  "ok": false,
+  "mode": "warn",
+  "errors": [
+    {
+      "ruleId": "callback-data-too-long",
+      "message": "callback_data is 72 bytes (max 64)",
+      "severity": "error",
+      "location": { "row": 0, "column": 0, "flatIndex": 0, "field": "callback_data" },
+      "hint": "Shorten scope/action/id or compress payload encoding"
+    }
+  ],
+  "warnings": [
+    {
+      "ruleId": "duplicate-callback-data",
+      "message": "Duplicate callback_data \"menu:home\"",
+      "severity": "warning",
+      "location": { "row": 1, "column": 0, "flatIndex": 2 }
+    }
+  ]
+}
+```
+
+### Custom plugins (ESLint-style)
+
+```ts
+import type { ValidationPlugin } from "telegram-inline-keyboard-builder";
+
+const productionPlugin: ValidationPlugin = {
+  name: "production-guards",
+  setup(registry) {
+    registry.registerRule({
+      id: "no-debug-callback",
+      defaultSeverity: "error",
+      run(ctx) {
+        const diagnostics = [];
+        for (const { button, rowIndex, columnIndex, flatIndex } of ctx.normalized.flat) {
+          if (
+            "callback_data" in button &&
+            button.callback_data?.startsWith("debug:")
+          ) {
+            diagnostics.push({
+              ruleId: "no-debug-callback",
+              message: "Remove debug: prefix before production",
+              severity: "error",
+              location: { row: rowIndex, column: columnIndex, flatIndex },
+            });
+          }
+        }
+        return diagnostics;
+      },
+    });
+    registry.setRuleSeverity("duplicate-callback-data", "error");
+  },
+};
+
+const kb = new InlineKeyboardBuilder();
+kb.use(productionPlugin);
+kb.setRules({ disabled: ["empty-row"] });
+```
+
+Per-rule severity override (like ESLint rule levels):
+
+```ts
+kb.setRules({
+  severity: [
+    { ruleId: "duplicate-callback-data", severity: "error" },
+    { ruleId: "empty-row", severity: "warning" },
+  ],
+});
+```
+
+### Migration to 3.2.3
+
+- **Fully backward compatible** — existing `build()` calls work unchanged.
+- **Opt in** when ready: add `build({ validate: true })` or `validate()` in tests.
+- **Recommended rollout:**
+  1. `npm install telegram-inline-keyboard-builder@3.2.3`
+  2. Add `validate()` in unit tests for critical keyboards
+  3. Enable `build({ validate: true, validationMode: "warn" })` in staging
+  4. Switch production to `strict` for invoice and catalog keyboards
+  5. Add team `use(plugin)` for project-specific rules
+
+> **V3.1 → V3.2.3 checklist**
+>
+> - [ ] Update: `npm install telegram-inline-keyboard-builder@3.2.3`
+> - [ ] Call `.setValidationContext("invoice")` before keyboards with `.addPayButton()`
+> - [ ] Use `build({ validate: true, validationMode: "strict" })` on production paths
+> - [ ] Add custom plugins for team conventions (prefixes, max callback length policies)
+> - [ ] See demo bot: `test-demo/product-catalog-bot` (`/validation` command)
 
 ---
 
@@ -267,8 +600,6 @@ console.log(builder.callbackDataParse("user:like:42"));
 // { scope: "user", action: "like", id: "42" }
 ```
 
-## other log
-
 ## 🔥 New update 🔥
 
 - Added color style for premium Telegram buttons and icons
@@ -347,11 +678,13 @@ bot.start(async (ctx) => {
 
 ---
 
-## 🚀 Key Features - Fluent & chainable API - Library-agnostic (no adapters, no dependencies)
+## 🚀 Key Features
 
+- Fluent & chainable API — library-agnostic (no adapters, no runtime dependencies)
 - Produces **pure Telegram inline keyboard JSON**
-- Auto-wrap & row control - Works with **any Telegram framework**
-- Zero abstraction leak
+- Auto-wrap, row control, `paginatedList()`, `preview()`
+- **Smart Validation & Warnings (v3.2.3)** — ESLint-style rules, plugins, strict/warn/silent modes
+- Zero framework coupling — works with Telegraf, node-telegram-bot-api, or any Bot API client
 
 ---
 
@@ -364,8 +697,18 @@ npm install telegram-inline-keyboard-builder
 ## importation
 
 ```js
-import { InlineKeyboardBuilder } from "telegram-inline-keyboard-builder";
+import {
+  InlineKeyboardBuilder,
+  ValidationError,
+  ValidationEngine,
+  createValidationEngine,
+  RULE_IDS,
+  createDiagnostic,
+  normalizeKeyboard,
+} from "telegram-inline-keyboard-builder";
 ```
+
+Types: `ValidationResult`, `Diagnostic`, `ValidationRule`, `ValidationPlugin`, `BuildOptions`, `ValidateOptions`, `ValidationMode`, etc.
 
 ## 🧠 Core Concept
 
@@ -407,16 +750,29 @@ new InlineKeyboardBuilder((buttonsPerRow = 2), (autoWrapMaxChars = 0));
 .newRow()
 .preview()
 .paginatedList(options = {})
+
+// Validation (v3.2.3)
+.validate(options = {})
+.registerRule(rule)
+.use(plugin)
+.setRules(config)
+.setRuleEnabled(ruleId, enabled)
+.setRuleSeverity(ruleId, severity)
+.setValidationMode("strict" | "warn" | "silent")
+.setValidationContext("default" | "message" | "invoice" | "edit")
+
+// Build
+.build()
+.build({ validate: true, validationMode: "strict" | "warn" | "silent" })
 ```
 
-// build
-.build()
-
+```js
 const keyboard = builder.build();
+// → { reply_markup: { inline_keyboard: [...] } }
 
-// Always returns:
-
-{ reply_markup: { inline_keyboard: [...] } }
+const safe = builder.build({ validate: true, validationMode: "strict" });
+// → throws ValidationError if errors exist
+```
 
 Fully compliant with Telegram Bot API.
 
@@ -523,6 +879,10 @@ parse_mode: "HTML",
 
 - **V2**: Here we **simply construct an object valid for all types of APIs** without **adapting** it.
 
+## Migration to V3.2.3
+
+See [Version 3.2.3 — Smart Validation & Warnings](#version-323--smart-validation--warnings) for validation rollout. **No breaking changes** — validation is opt-in.
+
 ## Migration to V3
 
 - **V3** is **fully backward compatible** with V2. No breaking changes — existing code requires no modification.
@@ -554,7 +914,8 @@ New methods are purely additive. Adopt them progressively:
 > - [ ] Update the package: `npm install telegram-inline-keyboard-builder@latest`
 > - [ ] Replace manual `callback_data` concatenations with `addCallbackButtonFromParts()`
 > - [ ] Replace manual pagination logic with `paginatedList()`
-> - [ ] Use `preview()` during development to verify keyboard layout before se
+> - [ ] Use `preview()` during development to verify keyboard layout before send
+> - [ ] (v3.2.3+) Enable `build({ validate: true })` or `validate()` in tests — see [Smart Validation](#version-323--smart-validation--warnings)
 
 ## 💜 Support This Project (Crypto)
 

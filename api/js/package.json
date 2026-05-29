@@ -1,6 +1,6 @@
 {
   "name": "telegram-inline-keyboard-builder",
-  "version": "3.1.2",
+  "version": "3.2.3",
   "description": "Universal inline keyboard builder for Telegram APIs",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/neoncraftx/telegram-inline-keyboard-builder.git#readme",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --out-dir dist --clean",
-    "test": "node --test test/index.test.mjs",
+    "test": "npm run build && node --test test/**/*.test.mjs",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

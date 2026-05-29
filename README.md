@@ -38,6 +38,7 @@ Pass it to any library, any bot framework, any language.
 - **Auto-wrap & row control** — `buttonsPerRow`, `autoWrapMaxChars`, `newRow()`
 - **Premium button styles** — `primary`, `success`, `danger` + custom emoji icons
 - **Structured callbacks** — build and parse `scope:action:id` strings without concatenation
+- **Smart validation (JS)** — ESLint-style rules, plugins, `strict`/`warn` modes ([docs](docs/validation.md))
 - **Built-in pagination** — turn any list into a paginated keyboard in one call
 - **Developer tools** — `preview()` prints the keyboard layout before you send it
 - **Fully typed** — TypeScript types (JS) and `TypedDict` / `Literal` annotations (Python)
@@ -115,6 +116,8 @@ await message.answer("Choose an action:", reply_markup=InlineKeyboardMarkup(
 ---
 
 ## Documentation
+
+**Integration demo:** [test-demo/product-catalog-bot](test-demo/product-catalog-bot) — Telegraf catalog bot with validation showcase (`npm run verify`).
 
 Full API reference, guides, and examples are available at:
 
