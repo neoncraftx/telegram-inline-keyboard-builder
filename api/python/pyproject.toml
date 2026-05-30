@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-inline-keyboard-builder"
-version = "3.1.3"
+version = "3.2.3"
 
 description = "Library-agnostic universal inline keyboard builder for python Telegram bots APIs"
 readme = "README.md"
