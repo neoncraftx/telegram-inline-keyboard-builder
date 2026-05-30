@@ -1,16 +1,13 @@
-from .core.builder import InlineKeyboardBuilder
-from .validator import (
+from .diagnostics import create_diagnostic
+from .engine import ValidationEngine, create_validation_engine
+from .normalization import normalize_keyboard
+from .rules import (
     RULE_IDS,
     TELEGRAM_CALLBACK_DATA_MAX_BYTES,
     TELEGRAM_MAX_BUTTONS_PER_ROW,
-    ValidationEngine,
-    ValidationError,
     builtin_rules,
-    create_diagnostic,
-    create_validation_engine,
-    normalize_keyboard,
 )
-from .validator.types import (
+from .types import (
     Diagnostic,
     DiagnosticLocation,
     DiagnosticSeverity,
@@ -21,6 +18,7 @@ from .validator.types import (
     RulesConfig,
     ValidateOptions,
     ValidationContextType,
+    ValidationError,
     ValidationMode,
     ValidationPlugin,
     ValidationResult,
@@ -28,7 +26,6 @@ from .validator.types import (
 )
 
 __all__ = [
-    "InlineKeyboardBuilder",
     "ValidationEngine",
     "create_validation_engine",
     "ValidationError",
@@ -53,5 +50,3 @@ __all__ = [
     "ValidationResult",
     "ValidationRule",
 ]
-
-__version__ = "3.2.3"

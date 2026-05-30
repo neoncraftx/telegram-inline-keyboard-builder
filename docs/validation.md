@@ -85,6 +85,41 @@ Default mode is `warn` (set via `setValidationMode`).
 | `unexpected-null-undefined` | error | Nullish required fields |
 | `invalid-keyboard-structure` | error/warning | Malformed buttons or empty keyboard |
 
+## Python API
+
+Same rule IDs and modes as JavaScript. Methods use **snake_case**:
+
+```python
+from telegram_inline_keyboard_builder import (
+    InlineKeyboardBuilder,
+    ValidationError,
+    ValidationRule,
+)
+
+kb = InlineKeyboardBuilder()
+kb.add_callback_button("OK", "menu:ok:1")
+result = kb.validate(mode="warn", context_type="message")
+
+kb.build(validate=True, validation_mode="strict")  # raises ValidationError
+
+kb.set_validation_context("invoice")
+kb.add_pay_button("Pay now")
+kb.validate()
+```
+
+Standalone engine:
+
+```python
+from telegram_inline_keyboard_builder import create_validation_engine
+
+engine = create_validation_engine()
+result = engine.validate({
+    "buttons": [{"text": "X", "callback_data": "a"}],
+    "buttons_per_row": 2,
+    "auto_wrap_max_chars": 0,
+})
+```
+
 ## Custom plugin example
 
 ```ts
@@ -162,9 +197,30 @@ builder.addPayButton("Pay now");
 builder.validate();
 ```
 
+## Custom plugin example (Python)
+
+```python
+from telegram_inline_keyboard_builder import InlineKeyboardBuilder, ValidationRule
+
+def no_debug(ctx):
+    out = []
+    for ref in ctx.normalized.flat:
+        data = ref.button.get("callback_data")
+        if isinstance(data, str) and data.startswith("debug:"):
+            out.append({
+                "rule_id": "no-debug-prefix",
+                "message": "Remove debug: prefix before production",
+                "severity": "error",
+                "location": {"row": ref.row_index, "column": ref.column_index},
+            })
+    return out
+
+kb = InlineKeyboardBuilder()
+kb.register_rule(ValidationRule(id="no-debug-prefix", run=no_debug))
+```
+
 ## Roadmap
 
-- Python API parity (`api/python`)
 - JSON Schema export for diagnostics
 - Auto-fix suggestions (codemods)
 - CI reporters (GitHub Actions annotations)

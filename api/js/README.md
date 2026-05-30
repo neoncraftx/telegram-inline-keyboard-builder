@@ -48,7 +48,7 @@ Produces **pure Telegram Bot API compliant JSON**, usable with **any library** (
 
 **v3.2.3** adds a native, **ESLint-style validation engine** for inline keyboards. It detects Telegram API mistakes **before** `build()` returns markup, surfaces **non-blocking warnings**, supports **custom rules via plugins**, and stays **100% framework-agnostic** (no Telegraf / node-telegram-bot-api coupling).
 
-> Full reference: [`docs/validation.md`](../../docs/validation.md) · Live demo: [`test-demo/product-catalog-bot`](../../test-demo/product-catalog-bot)
+> Full reference: [`docs/validation.md`](https://github.com/neoncraftx/telegram-inline-keyboard-builder/tree/main/docs)
 
 ### Why use Smart Validation?
 
