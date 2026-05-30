@@ -2,11 +2,13 @@
 [![Downloads](https://img.shields.io/pypi/dm/telegram-inline-keyboard-builder?style=flat&logo=python&logoColor=white&color=4B8BBE)](https://pypi.org/project/telegram-inline-keyboard-builder/)
 [![Python versions](https://img.shields.io/pypi/pyversions/telegram-inline-keyboard-builder?style=flat&logo=python&logoColor=white&color=FFD43B)](https://pypi.org/project/telegram-inline-keyboard-builder/) [![license](https://img.shields.io/npm/l/telegram-inline-keyboard-builder?style=flat&color=555555)](LICENSE) ![Telegram](https://img.shields.io/badge/Telegram-Inline%20Keyboard-2CA5E0?style=flat&logo=telegram&logoColor=white)
 
-# Inline Keyboard Builder (v3) — Python
+# Inline Keyboard Builder (v3.2.3) — Python
 
 Universal inline keyboard builder for Telegram bots.
 Produces **pure Telegram Bot API compliant JSON**, usable with **any library**
 (python-telegram-bot, Aiogram, Pyrogram, Telebot…).
+
+> **New in 3.2.3:** [Smart Validation & Warnings](#version-323--smart-validation--warnings) — ESLint-style rules, plugins, `strict` / `warn` / `silent` modes. Full reference: [`docs/validation.md`](https://github.com/neoncraftx/telegram-inline-keyboard-builder/tree/main/docs).
 
 > Version 3 brings full feature parity with the JavaScript/TypeScript edition:
 > `add_callback_button_from_parts()`, `callback_data_parse()`, `preview()`,
@@ -16,6 +18,7 @@ Produces **pure Telegram Bot API compliant JSON**, usable with **any library**
 
 ## Table of Contents
 
+- [Version 3.2.3 — Smart Validation](#version-323--smart-validation--warnings)
 - [Installation](#installation)
 - [Import](#import)
 - [Package structure](#package-structure)
@@ -50,6 +53,123 @@ Produces **pure Telegram Bot API compliant JSON**, usable with **any library**
 
 ---
 
+## Version 3.2.3 — Smart Validation & Warnings
+
+Native validation engine (parity with the JS package): catch Telegram API mistakes **before** `build()`, with structured diagnostics and custom rules.
+
+### Why use it
+
+| Without validation | With v3.2.3 |
+| ------------------ | ----------- |
+| `callback_data` > 64 bytes → API error at runtime | `callback-data-too-long` with row/column location |
+| Pay button on a normal message | `incompatible-button-context` when context is not `invoice` |
+| Duplicate `callback_data` | `duplicate-callback-data` warning |
+| Team conventions (no `debug:` prefix) | `register_rule()` / `use(plugin)` |
+
+### Performance
+
+- **Normalize once** per `validate()` call — all rules share the same layout snapshot
+- **Shared `layout.py`** with the builder (no duplicated layout logic)
+- **Active rules only** — disabled rules are skipped
+- **Zero extra runtime dependencies** (stdlib + `typing_extensions` only)
+
+### Validation modes
+
+| Mode | `validate()` | `build(validate=True, ...)` |
+| ---- | -------------- | --------------------------- |
+| `strict` | Returns result | Raises `ValidationError` on errors |
+| `warn` | Returns diagnostics | Never raises |
+| `silent` | Same as warn | Same as warn |
+
+### Built-in rules
+
+Same rule IDs as JavaScript (kebab-case): `callback-data-too-long`, `empty-button-text`, `invalid-url`, `empty-row`, `too-many-buttons-per-row`, `incompatible-button-context`, `inconsistent-configuration`, `duplicate-callback-data`, `unexpected-null-undefined`, `invalid-keyboard-structure`.
+
+### API (snake_case)
+
+```python
+from telegram_inline_keyboard_builder import (
+    InlineKeyboardBuilder,
+    ValidationError,
+    RULE_IDS,
+)
+
+kb = InlineKeyboardBuilder()
+kb.add_callback_button("OK", "menu:ok:1")
+
+result = kb.validate(mode="warn", context_type="message")
+if not result["ok"]:
+    print(result["errors"], result["warnings"])
+
+markup = kb.build(validate=True, validation_mode="strict")
+
+kb.set_validation_mode("strict")
+kb.set_validation_context("invoice")
+kb.register_rule(my_rule)
+kb.use(my_plugin)
+kb.set_rules({"disabled": ["duplicate-callback-data"]})
+kb.set_rule_severity("empty-row", "error")
+```
+
+### Example — Aiogram + strict build
+
+```python
+from aiogram.types import InlineKeyboardMarkup
+from telegram_inline_keyboard_builder import InlineKeyboardBuilder, ValidationError
+
+def build_menu() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder(2)
+    kb.set_validation_mode("strict")
+    kb.add_callback_button_from_parts("menu", "home", 1, "Home")
+    kb.add_callback_button_from_parts("menu", "settings", 1, "Settings")
+    try:
+        return InlineKeyboardMarkup(**kb.build(validate=True, validation_mode="strict"))
+    except ValidationError as e:
+        for err in e.result["errors"]:
+            print(err["rule_id"], err["message"])
+        raise
+```
+
+### Example — custom plugin
+
+```python
+from telegram_inline_keyboard_builder import InlineKeyboardBuilder, ValidationRule
+
+def no_debug_prefix(ctx):
+    diagnostics = []
+    for ref in ctx.normalized.flat:
+        data = ref.button.get("callback_data")
+        if isinstance(data, str) and data.startswith("debug:"):
+            diagnostics.append({
+                "rule_id": "no-debug-prefix",
+                "message": "Remove debug: prefix before production",
+                "severity": "error",
+                "location": {
+                    "row": ref.row_index,
+                    "column": ref.column_index,
+                    "flat_index": ref.flat_index,
+                },
+            })
+    return diagnostics
+
+kb = InlineKeyboardBuilder()
+kb.use({
+    "name": "production-guards",
+    "rules": [ValidationRule(id="no-debug-prefix", run=no_debug_prefix)],
+})
+```
+
+### Tests
+
+```bash
+cd api/python
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+```
+
+---
+
 ## Installation
 
 ```bash
@@ -59,13 +179,21 @@ pip install telegram-inline-keyboard-builder
 ## Import
 
 ```python
-from telegram_inline_keyboard_builder import InlineKeyboardBuilder
+from telegram_inline_keyboard_builder import (
+    InlineKeyboardBuilder,
+    ValidationError,
+    ValidationEngine,
+    create_validation_engine,
+    RULE_IDS,
+)
 
-# Optional: import type hints for your own type-annotated code
-from telegram_inline_keyboard_builder.types import (
+# Optional: type hints
+from telegram_inline_keyboard_builder import (
+    ValidationResult,
+    Diagnostic,
+    ValidationRule,
+    ValidationPlugin,
     PaginatedListOptions,
-    PaginationConfig,
-    PaginationLabels,
     ButtonConfig,
 )
 ```
@@ -77,7 +205,10 @@ from telegram_inline_keyboard_builder.types import (
 ```
 telegram_inline_keyboard_builder/
 ├── __init__.py          # public exports
-├── builder.py           # InlineKeyboardBuilder class
+├── validator/           # Smart Validation engine (v3.2.3)
+├── core/
+│   ├── builder.py       # InlineKeyboardBuilder class
+│   ├── layout.py        # shared layout engine
 └── types/
     ├── __init__.py
     ├── buttons.py        # ButtonStyle, CallbackButton, UrlButton …
@@ -344,6 +475,19 @@ builder.new_row() -> InlineKeyboardBuilder
 
 ---
 
+### Validation (v3.2.3)
+
+```python
+builder.validate(mode="warn", context_type="message") -> ValidationResult
+builder.register_rule(rule) -> InlineKeyboardBuilder
+builder.use(plugin) -> InlineKeyboardBuilder
+builder.set_rules(config) -> InlineKeyboardBuilder
+builder.set_validation_mode("strict" | "warn" | "silent") -> InlineKeyboardBuilder
+builder.set_validation_context("default" | "message" | "invoice" | "edit") -> InlineKeyboardBuilder
+```
+
+---
+
 ### `build()`
 
 Build and return the final Telegram `reply_markup` object.
@@ -351,6 +495,9 @@ Build and return the final Telegram `reply_markup` object.
 ```python
 keyboard = builder.build()
 # → {"reply_markup": {"inline_keyboard": [[...], [...]]}}
+
+keyboard = builder.build(validate=True, validation_mode="strict")
+# raises ValidationError when errors exist
 ```
 
 ---
@@ -626,6 +773,12 @@ await update.message.reply_text("Menu:", reply_markup=keyboard)
 ```
 
 ---
+
+## Migration to v3.2.3
+
+- **Fully backward compatible** — `build()` without arguments is unchanged.
+- Opt in with `validate()` in tests, then `build(validate=True, validation_mode="warn")`, then `strict` in production.
+- Use `set_validation_context("invoice")` before keyboards with `add_pay_button()`.
 
 ## Migration to v3
 

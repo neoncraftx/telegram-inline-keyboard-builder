@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-inline-keyboard-builder"
-version = "3.0.0"
+version = "3.2.3"
 
 description = "Library-agnostic universal inline keyboard builder for python Telegram bots APIs"
 readme = "README.md"
@@ -43,6 +43,12 @@ classifiers = [
 Homepage = "https://github.com/neoncraftx/telegram-inline-keyboard-builder"
 Repository = "https://github.com/neoncraftx/telegram-inline-keyboard-builder"
 Issues = "https://github.com/neoncraftx/telegram-inline-keyboard-builder/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 where = ["."]

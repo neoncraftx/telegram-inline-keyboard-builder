@@ -176,18 +176,4 @@ Icon?
 # ==========================
 test-demo/**/node_modules/
 test-demo/**/.env
-
-# ==========================
-# Tests
-# ==========================
-coverage/
-*.test.js
-*.spec.js
-*.test.ts
-*.spec.ts
-*.test.py
-*.spec.py
-*.test.java
-*.spec.java
-*.test.cpp
-*.spec.cpp
+api/python/.venv/

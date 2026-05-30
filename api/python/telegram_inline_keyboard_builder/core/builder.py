@@ -18,6 +18,19 @@ from .types.buttons import (
     PayButton
 )
 from .types.utils import PaginatedListOptions
+from .layout import layout_buttons
+from ..validator import ValidationEngine, ValidationError
+from ..validator.types import (
+    DiagnosticSeverity,
+    KeyboardInput,
+    RulesConfig,
+    ValidateOptions,
+    ValidationContextType,
+    ValidationMode,
+    ValidationPlugin,
+    ValidationResult,
+    ValidationRule,
+)
 
 T = TypeVar("T")
 
@@ -62,6 +75,7 @@ class InlineKeyboardBuilder:
         self.buttons_per_row: int    = max(1, int(buttons_per_row))
         self.auto_wrap_max_chars: int = max(0, int(auto_wrap_max_chars))
         self._buttons: list[InlineKeyboardButton] = []
+        self._validation = ValidationEngine()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -641,47 +655,94 @@ class InlineKeyboardBuilder:
         Returns:
             A 2-D list of button dicts (rows → buttons).
         """
-        rows: list[list[InlineKeyboardButton]] = []
-        row:  list[InlineKeyboardButton]       = []
-        row_chars = 0
+        return layout_buttons(
+            self._buttons,
+            self.buttons_per_row,
+            self.auto_wrap_max_chars,
+        )
 
-        def push_row() -> None:
-            nonlocal row, row_chars
-            if row:
-                rows.append(row)
-                row = []
-                row_chars = 0
+    # ------------------------------------------------------------------
+    # Validation (v3.2.3)
+    # ------------------------------------------------------------------
 
-        for btn in self._buttons:
-            if btn.get("__newRow"):  # type: ignore[typeddict-item]
-                push_row()
-                continue
+    def validate(self, options: ValidateOptions | None = None) -> ValidationResult:
+        """Run all enabled validation rules against the current keyboard state."""
+        return self._validation.validate(self._keyboard_input(), options)
 
-            text_length = len(str(btn.get("text", "")))
+    def register_rule(self, rule: ValidationRule) -> "InlineKeyboardBuilder":
+        self._validation.register_rule(rule)
+        return self
 
-            if (
-                self.auto_wrap_max_chars > 0
-                and row
-                and row_chars + text_length > self.auto_wrap_max_chars
-            ):
-                push_row()
+    def use(self, plugin: ValidationPlugin) -> "InlineKeyboardBuilder":
+        self._validation.use(plugin)
+        return self
 
-            if len(row) >= self.buttons_per_row:
-                push_row()
+    def set_rules(self, config: RulesConfig) -> "InlineKeyboardBuilder":
+        self._validation.set_rules(config)
+        return self
 
-            row.append(btn)
-            row_chars += text_length
+    def set_rule_enabled(
+        self, rule_id: str, enabled: bool
+    ) -> "InlineKeyboardBuilder":
+        self._validation.set_rule_enabled(rule_id, enabled)
+        return self
 
-        push_row()
-        return rows
+    def set_rule_severity(
+        self, rule_id: str, severity: DiagnosticSeverity
+    ) -> "InlineKeyboardBuilder":
+        self._validation.set_rule_severity(rule_id, severity)
+        return self
+
+    def set_validation_mode(self, mode: ValidationMode) -> "InlineKeyboardBuilder":
+        self._validation.set_default_mode(mode)
+        return self
+
+    def set_validation_context(
+        self, context_type: ValidationContextType
+    ) -> "InlineKeyboardBuilder":
+        self._validation.set_context_type(context_type)
+        return self
+
+    def _keyboard_input(self) -> KeyboardInput:
+        return {
+            "buttons": self._buttons,
+            "buttons_per_row": self.buttons_per_row,
+            "auto_wrap_max_chars": self.auto_wrap_max_chars,
+        }
+
+    def _apply_validation_on_build(
+        self,
+        *,
+        validate: bool,
+        validation_mode: ValidationMode | None,
+    ) -> ValidationResult | None:
+        if not validate:
+            return None
+        opts: ValidateOptions = {}
+        if validation_mode is not None:
+            opts["mode"] = validation_mode
+        result = self.validate(opts)
+        if result["mode"] == "strict" and not result["ok"]:
+            raise ValidationError(result)
+        return result
 
     # ------------------------------------------------------------------
     # Final output
     # ------------------------------------------------------------------
 
-    def build(self) -> dict[str, dict[str, list[list[InlineKeyboardButton]]]]:
+    def build(
+        self,
+        *,
+        validate: bool = False,
+        validation_mode: ValidationMode | None = None,
+    ) -> dict[str, dict[str, list[list[InlineKeyboardButton]]]]:
         """
         Build and return the final Telegram ``reply_markup`` object.
+
+        Args:
+            validate:           When ``True``, run validation before returning markup.
+            validation_mode:    ``strict`` raises :class:`ValidationError` on errors;
+                                ``warn`` / ``silent`` never raise.
 
         Returns:
             A dict of the form ``{"reply_markup": {"inline_keyboard": [...]}}``
@@ -691,7 +752,13 @@ class InlineKeyboardBuilder:
 
             keyboard = builder.build()
             await message.reply("Choose:", reply_markup=keyboard["reply_markup"])
+
+            keyboard = builder.build(validate=True, validation_mode="strict")
         """
+        self._apply_validation_on_build(
+            validate=validate,
+            validation_mode=validation_mode,
+        )
         return {
             "reply_markup": {
                 "inline_keyboard": self._layout_buttons(),
